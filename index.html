@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE-html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -14,7 +14,9 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+            /* Use a subtle gradient for a more unique background */
+            background: #f3f4f6;
+            background-image: linear-gradient(to top, #e2e8f0 0%, #ffffff 100%);
         }
         /* Custom scrollbar for aesthetic purposes */
         ::-webkit-scrollbar {
@@ -75,18 +77,23 @@
 
     <!-- Main Container -->
     <div class="bg-white shadow-xl rounded-2xl p-6 md:p-10 w-full max-w-2xl mx-auto m-4 transition-all duration-300">
-        <!-- Main Landing Page -->
+        <!-- Main Landing Page - Updated for a more unique look -->
         <div id="landing-page" class="flex flex-col items-center text-center p-4">
-            <h1 class="text-3xl font-bold text-gray-800 mb-6">Create a Document</h1>
-            <p class="text-gray-600 mb-8 max-w-sm">Select the type of document you need to generate, or view your saved challan summaries.</p>
-            <div class="flex flex-col sm:flex-row gap-4 w-full justify-center">
-                <button id="invoice-btn" class="w-full sm:w-1/3 p-4 bg-purple-600 text-white rounded-xl shadow-lg hover:bg-purple-700 transition-colors duration-200">
+            <!-- Add Logo -->
+            <img src="1.png" alt="Azan Enterprises Logo" class="w-48 h-auto mb-8 animate-pulse">
+            
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">DASHBOARD</h1>
+            <p class="text-gray-600 mb-8 max-w-sm">
+                Select the type of document you need to generate, or view your saved challan summaries.
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full justify-center">
+                <button id="invoice-btn" class="w-full p-4 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-xl shadow-lg hover:from-purple-600 hover:to-purple-800 transition-all duration-300 transform hover:scale-105">
                     Generate Invoice
                 </button>
-                <button id="challan-btn" class="w-full sm:w-1/3 p-4 bg-teal-600 text-white rounded-xl shadow-lg hover:bg-teal-700 transition-colors duration-200">
+                <button id="challan-btn" class="w-full p-4 bg-gradient-to-r from-teal-500 to-teal-700 text-white rounded-xl shadow-lg hover:from-teal-600 hover:to-teal-800 transition-all duration-300 transform hover:scale-105">
                     Generate Delivery Challan
                 </button>
-                <button id="summary-btn" class="w-full sm:w-1/3 p-4 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-colors duration-200">
+                <button id="summary-btn" class="w-full p-4 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-xl shadow-lg hover:from-blue-600 hover:to-blue-800 transition-all duration-300 transform hover:scale-105">
                     View Challan Summary
                 </button>
             </div>
@@ -204,7 +211,7 @@
                     <p class="text-xs mt-2">OFFICE#B218, SECTOR 11-A, NORTH KARACHI, KARACHI</p>
                     <p class="text-xs">NTN#7960968 / CNIC#42101-1869261-5</p>
                     <p class="text-xs">Phone: 0334-7332948 / 0344-2656589</p>
-                    <p class="text-xs">Email: azanamir27@outlook.com</p>
+                    <p class="text-xs">Email:azanenterprises25@gmail.com</p>
                 </div>
                 <div class="doc-meta text-right">
                     <h1 class="text-4xl font-bold text-gray-800">Invoice</h1>
@@ -274,7 +281,7 @@
                     <p class="text-xs mt-2">OFFICE#B218, SECTOR 11-A, NORTH KARACHI, KARACHI</p>
                     <p class="text-xs">NTN#7960968 / CNIC#42101-1869261-5</p>
                     <p class="text-xs">Phone: 0334-7332948 / 0344-2656589</p>
-                    <p class="text-xs">Email: azanamir27@outlook.com</p>
+                    <p class="text-xs">Email: azanenterprises25@gmail.com</p>
                 </div>
                 <div class="doc-meta text-right">
                     <h1 class="text-4xl font-bold text-gray-800">DELIVERY CHALLAN</h1>
@@ -335,7 +342,7 @@
                     <p class="text-xs mt-2">OFFICE#B218, SECTOR 11-A, NORTH KARACHI, KARACHI</p>
                     <p class="text-xs">NTN#7960968 / CNIC#42101-1869261-5</p>
                     <p class="text-xs">Phone: 0334-7332948 / 0344-2656589</p>
-                    <p class="text-xs">Email: azanamir27@outlook.com</p>
+                    <p class="text-xs">Email: azanenterprises25@gmail.com</p>
                 </div>
                 <div class="doc-meta text-right">
                     <h1 class="text-4xl font-bold text-gray-800">Challan Summary</h1>
@@ -488,7 +495,8 @@
             const itemData = {
                 type: "wooden-tile",
                 boxes: "21",
-                qty: "414.54"
+                qty: "414.54",
+                inlaySqFt: "414.54"
             };
             addItem(itemData);
         }
@@ -589,6 +597,9 @@
                 if (data.qty) {
                      itemRow.querySelector('.qty-input').value = data.qty;
                 }
+                if (data.inlaySqFt) {
+                     itemRow.querySelector('.inlay-sqft-input').value = data.inlaySqFt;
+                }
             } else {
                 // Default behavior for generic item
                 itemRow.querySelector('.description-input').value = data.description || '';
@@ -658,6 +669,17 @@
                     </div>
                 `);
 
+                // Add the new Inlay sq.ft field after the Qty field
+                const qtyOutputDiv = itemRow.querySelector('.wooden-tile-sqft-output');
+                if (qtyOutputDiv) {
+                    qtyOutputDiv.insertAdjacentHTML('afterend', `
+                        <div class="flex-shrink-0 w-full md:w-24">
+                            <label class="block text-xs font-medium text-gray-500">Inlay sq.ft</label>
+                            <input type="number" step="0.01" value="0" class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md inlay-sqft-input">
+                        </div>
+                    `);
+                }
+
                 // Set unit to sq.ft and lock it
                 unitSelect.value = 'sq.ft';
                 unitSelect.setAttribute('disabled', true);
@@ -686,6 +708,12 @@
                 if (sqftOutput) {
                     sqftOutput.remove();
                 }
+                // Remove Inlay sq.ft field if it exists
+                const inlaySqftInput = itemRow.querySelector('.inlay-sqft-input');
+                if (inlaySqftInput) {
+                    inlaySqftInput.parentElement.remove();
+                }
+                
                 qtyContainer.innerHTML = `
                     <label for="" class="block text-xs font-medium text-gray-500">Qty</label>
                     <input type="number" step="0.01" value="0" class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md qty-input">
@@ -837,10 +865,12 @@
                 const qty = row.querySelector('.qty-input').value;
                 const unit = row.querySelector('.unit-select').value;
                 let boxes = null;
+                let inlaySqFt = null;
                 if (itemType === 'wooden-tile') {
                      boxes = row.querySelector('.boxes-input').value;
+                     inlaySqFt = row.querySelector('.inlay-sqft-input').value;
                 }
-                items.push({ itemType, description, qty, unit, boxes });
+                items.push({ itemType, description, qty, unit, boxes, inlaySqFt });
             });
 
             // Save challan to local storage
@@ -862,13 +892,20 @@
             items.forEach((item, index) => {
                 const newRow = document.createElement('tr');
                 let displayQty = `${item.qty} ${item.unit}`;
-                if (item.itemType === 'wooden-tile' && item.boxes) {
-                    displayQty = `${item.qty} ${item.unit} & ${item.boxes} BOX`;
-                }
+                let descriptionWithInlay = item.description;
 
+                if (item.itemType === 'wooden-tile') {
+                    if (item.boxes) {
+                        displayQty = `${item.qty} ${item.unit} & ${item.boxes} BOX`;
+                    }
+                    if (item.inlaySqFt) {
+                        descriptionWithInlay += `\nINLAY: ${item.inlaySqFt} sq.ft`;
+                    }
+                }
+                
                 newRow.innerHTML = `
                     <td class="border border-gray-400 p-2 text-center align-top">${index + 1}.</td>
-                    <td class="border border-gray-400 p-2 align-top">${item.description}</td>
+                    <td class="border border-gray-400 p-2 align-top" style="white-space: pre-wrap;">${descriptionWithInlay}</td>
                     <td class="border border-gray-400 p-2 text-right align-top">${displayQty}</td>
                 `;
                 pdfItemList.appendChild(newRow);
