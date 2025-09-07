@@ -1,4 +1,4 @@
-<!DOCTYPE-html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,13 +11,16 @@
     <!-- jsPDF and html2canvas for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- jsPDF AutoTable for robust multi-page table generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            /* Use a subtle gradient for a more unique background */
             background: #f3f4f6;
             background-image: linear-gradient(to top, #e2e8f0 0%, #ffffff 100%);
         }
+        
         /* Custom scrollbar for aesthetic purposes */
         ::-webkit-scrollbar {
             width: 8px;
@@ -29,6 +32,7 @@
             background-color: #d1d5db;
             border-radius: 4px;
         }
+        
         /* Hidden template for PDF generation - formatted for A4 */
         .hidden-template {
             position: absolute;
@@ -43,46 +47,69 @@
             font-size: 10pt;
             display: flex;
             flex-direction: column;
-            justify-content: space-between; /* This pushes the footer to the bottom */
+            justify-content: space-between;
         }
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-            .hidden-template, .hidden-template * {
-                visibility: visible;
-            }
-            .hidden-template {
-                position: absolute;
-                left: 0;
-                top: 0;
-            }
-        }
+        
         /* Custom styling for the delivery challan signature section */
-        #challan-pdf-template .signature-section {
+         #challan-pdf-template .signature-section {
             display: flex;
             justify-content: space-between;
             text-align: center;
             width: 100%;
-            margin-top: 100px; /* Adjust this value to push it further down if needed */
+            margin-top: 100px;
         }
-        #challan-pdf-template .signature-section > div {
+         #challan-pdf-template .signature-section > div {
             width: 30%;
             border-top: 1px solid #9ca3af;
             padding-top: 4px;
         }
+        
+        /* Loading overlay for better user experience */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            flex-direction: column;
+            text-align: center;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p class="mt-4 text-gray-700 font-semibold">Generating PDF, please wait...</p>
+    </div>
 
     <!-- Main Container -->
     <div class="bg-white shadow-xl rounded-2xl p-6 md:p-10 w-full max-w-2xl mx-auto m-4 transition-all duration-300">
-        <!-- Main Landing Page - Updated for a more unique look -->
+        <!-- Main Landing Page -->
         <div id="landing-page" class="flex flex-col items-center text-center p-4">
             <!-- Add Logo -->
-            <img src="1.png" alt="Azan Enterprises Logo" class="w-48 h-auto mb-8 animate-pulse">
+            <img id="company-logo" src="1.png" alt="Azan Enterprises Logo" class="w-48 h-auto mb-8 animate-pulse">
             
-            <h1 class="text-3xl font-bold text-gray-800 mb-6">DASHBOARD</h1>
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Create a Document</h1>
             <p class="text-gray-600 mb-8 max-w-sm">
                 Select the type of document you need to generate, or view your saved challan summaries.
             </p>
@@ -102,11 +129,11 @@
         <!-- Invoice/Challan Form Container -->
         <div id="form-container" class="hidden">
             <button id="back-btn" class="mb-4 text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <svg xmlns="http://www.w3.org/24000/svg" class="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 Back
             </button>
             <div class="flex justify-center mb-6">
-                <img id="form-logo" src="1.png" alt="Company Logo" class="w-36 h-auto">
+                <img src="1.png" alt="Company Logo" class="w-36 h-auto">
             </div>
             <h2 id="form-title" class="text-2xl font-semibold text-gray-700 mb-6 text-center"></h2>
             
@@ -126,11 +153,11 @@
 
                 <div id="challan-dates" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
                     <div>
-                        <label for="order-date" class="block text-sm font-medium text-gray-700">Order Date #</label>
+                        <label for="order-date" class="block text-sm font-medium text-gray-700">Order Date</label>
                         <input type="date" id="order-date" class="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg shadow-sm focus:border-purple-500 focus:ring-purple-500">
                     </div>
                     <div>
-                        <label for="dispatch-date" class="block text-sm font-medium text-gray-700">Dispatch Date #</label>
+                        <label for="dispatch-date" class="block text-sm font-medium text-gray-700">Dispatch Date</label>
                         <input type="date" id="dispatch-date" class="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg shadow-sm focus:border-purple-500 focus:ring-purple-500">
                     </div>
                 </div>
@@ -184,15 +211,29 @@
         <!-- Summary View Container -->
         <div id="summary-container" class="hidden">
             <button id="back-to-landing-btn" class="mb-4 text-gray-500 hover:text-gray-700 transition-colors duration-200 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <svg xmlns="http://www.w3.org/24000/svg" class="h-5 w-5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
                 Back
             </button>
             <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center">Challan Summary</h2>
             <div id="summary-list" class="space-y-4">
                 <p id="no-challans-msg" class="text-gray-500 text-center hidden">No challans saved yet.</p>
             </div>
-            <button id="generate-summary-pdf-btn" class="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200 mt-8 hidden">
-                Generate Summary PDF
+            
+            <!-- Grand Totals Section -->
+            <div id="grand-totals" class="mt-8 p-4 bg-gray-100 rounded-lg hidden">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Grand Totals</h3>
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <div class="font-medium text-gray-600">Total Boxes:</div>
+                    <div id="total-boxes-output" class="text-right font-bold text-gray-800">0</div>
+                    <div class="font-medium text-gray-600">Total Inlay (sq.ft):</div>
+                    <div id="total-inlay-output" class="text-right font-bold text-gray-800">0.00</div>
+                    <div class="font-medium text-gray-600">Total Qty (sq.ft):</div>
+                    <div id="total-sqft-output" class="text-right font-bold text-gray-800">0.00</div>
+                </div>
+            </div>
+
+            <button id="generate-selected-pdf-btn" class="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200 mt-8 hidden" disabled>
+                Generate PDF of Selected Challans
             </button>
         </div>
 
@@ -211,7 +252,7 @@
                     <p class="text-xs mt-2">OFFICE#B218, SECTOR 11-A, NORTH KARACHI, KARACHI</p>
                     <p class="text-xs">NTN#7960968 / CNIC#42101-1869261-5</p>
                     <p class="text-xs">Phone: 0334-7332948 / 0344-2656589</p>
-                    <p class="text-xs">Email:azanenterprises25@gmail.com</p>
+                    <p class="text-xs">Email: azanamir27@outlook.com</p>
                 </div>
                 <div class="doc-meta text-right">
                     <h1 class="text-4xl font-bold text-gray-800">Invoice</h1>
@@ -281,7 +322,7 @@
                     <p class="text-xs mt-2">OFFICE#B218, SECTOR 11-A, NORTH KARACHI, KARACHI</p>
                     <p class="text-xs">NTN#7960968 / CNIC#42101-1869261-5</p>
                     <p class="text-xs">Phone: 0334-7332948 / 0344-2656589</p>
-                    <p class="text-xs">Email: azanenterprises25@gmail.com</p>
+                    <p class="text-xs">Email: azanamir27@outlook.com</p>
                 </div>
                 <div class="doc-meta text-right">
                     <h1 class="text-4xl font-bold text-gray-800">DELIVERY CHALLAN</h1>
@@ -328,56 +369,6 @@
             <div>RECEIVED BY</div>
         </div>
     </div>
-
-
-    <!-- Hidden Template for Summary PDF -->
-    <div id="summary-pdf-template" class="hidden-template">
-        <div>
-            <div class="doc-header flex justify-between items-start mb-8">
-                <div class="company-info flex flex-col">
-                    <img src="1.png" alt="Company Logo" class="w-36 h-auto mb-2">
-                    <span class="text-3xl font-bold text-blue-800">AZAN ENTERPRISES</span>
-                    <span class="text-sm font-semibold">Architect, Planner, Renovation Int./Ext. Designer & Estimator</span>
-                    <span class="text-sm font-semibold">CIVIL CONTRUCTION AND CONTACTOR</span>
-                    <p class="text-xs mt-2">OFFICE#B218, SECTOR 11-A, NORTH KARACHI, KARACHI</p>
-                    <p class="text-xs">NTN#7960968 / CNIC#42101-1869261-5</p>
-                    <p class="text-xs">Phone: 0334-7332948 / 0344-2656589</p>
-                    <p class="text-xs">Email: azanenterprises25@gmail.com</p>
-                </div>
-                <div class="doc-meta text-right">
-                    <h1 class="text-4xl font-bold text-gray-800">Challan Summary</h1>
-                    <p class="text-sm mt-2">
-                        DATE: <span id="pdf-summary-date"></span>
-                    </p>
-                </div>
-            </div>
-            
-            <!-- Table for summary items -->
-            <table class="w-full border-collapse">
-                <thead>
-                    <tr class="bg-gray-200">
-                        <th class="border border-gray-400 p-2 text-center w-10">S.NO</th>
-                        <th class="border border-gray-400 p-2 text-left">CHALLAN #</th>
-                        <th class="border border-gray-400 p-2 text-left">BILL TO</th>
-                        <th class="border border-gray-400 p-2 text-right">DATE</th>
-                        <th class="border border-gray-400 p-2 text-right">TOTAL AMOUNT</th>
-                    </tr>
-                </thead>
-                <tbody id="pdf-summary-list">
-                    <!-- Dynamic rows will be inserted here -->
-                </tbody>
-            </table>
-        </div>
-
-        <div class="totals-container mt-4 flex justify-end">
-            <div class="w-1/3">
-                <div class="flex justify-between border-t border-gray-400 pt-2 mt-2 font-bold text-lg">
-                    <span>GRAND TOTAL</span>
-                    <span id="pdf-grand-total"></span>
-                </div>
-            </div>
-        </div>
-    </div>
     
     <!-- Custom Modal for Alerts -->
     <div id="alert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center p-4 z-50">
@@ -400,7 +391,7 @@
         const formTitle = document.getElementById('form-title');
         const addItemBtn = document.getElementById('add-item-btn');
         const generatePdfBtn = document.getElementById('generate-pdf-btn');
-        const generateSummaryPdfBtn = document.getElementById('generate-summary-pdf-btn');
+        const generateSelectedPdfBtn = document.getElementById('generate-selected-pdf-btn');
         const itemList = document.getElementById('item-list');
         const docNoInput = document.getElementById('doc-no');
         const docDateInput = document.getElementById('doc-date');
@@ -411,17 +402,20 @@
         const alertModal = document.getElementById('alert-modal');
         const alertMessage = document.getElementById('alert-message');
         const alertOkBtn = document.getElementById('alert-ok-btn');
-        
-        // New fields for the Challan
+        const grandTotalsSection = document.getElementById('grand-totals');
+        const totalBoxesOutput = document.getElementById('total-boxes-output');
+        const totalInlayOutput = document.getElementById('total-inlay-output');
+        const totalSqFtOutput = document.getElementById('total-sqft-output');
         const docDateLabel = document.getElementById('doc-date-label');
         const challanDatesSection = document.getElementById('challan-dates');
         const orderDateInput = document.getElementById('order-date');
         const dispatchDateInput = document.getElementById('dispatch-date');
         const customerDetailsSection = document.getElementById('customer-details');
-        const customerAddressInput = document.getElementById('customer-address');
+        const customerAddressInput = document = document.getElementById('customer-address');
         const contactNameInput = document.getElementById('contact-name');
         const contactNumberInput = document.getElementById('contact-number');
         const totalSection = document.getElementById('total-section');
+        const loadingOverlay = document.getElementById('loading-overlay');
 
         // Global variable to store the current document type
         let currentDocType = '';
@@ -437,7 +431,7 @@
             alertModal.classList.remove('flex');
         });
 
-        // Function to show the selected form or summary page
+        // Function to show the selected view
         function showView(view) {
             landingPage.classList.add('hidden');
             formContainer.classList.add('hidden');
@@ -465,7 +459,7 @@
             // Adjust form fields based on type
             if (type === 'challan') {
                 docDateInput.parentElement.classList.add('hidden');
-                docDateLabel.textContent = "Dispatch Date #";
+                docDateLabel.textContent = "Dispatch Date";
                 challanDatesSection.classList.remove('hidden');
                 customerDetailsSection.classList.remove('hidden');
                 totalSection.classList.add('hidden');
@@ -485,18 +479,18 @@
         function prepopulateChallanForm() {
             docNoInput.value = '#251';
             billToInput.value = 'MEEZAN BANK';
-            customerAddressInput.value = 'Meezan Bank Madhali Road Branch Sahiwal';
-            contactNameInput.value = 'Mr. Hassan';
-            contactNumberInput.value = '0348-6042982';
+            customerAddressInput.value = 'Meezan Bank ';
+            contactNameInput.value = 'Mr. ';
+            contactNumberInput.value = '03';
             orderDateInput.value = '2025-08-22'; 
-            dispatchDateInput.value = '2025-08-22';
+            dispatchDateInput.value = new Date().toISOString().slice(0, 10);
             
             // Add the item from the template
             const itemData = {
                 type: "wooden-tile",
-                boxes: "21",
-                qty: "414.54",
-                inlaySqFt: "414.54"
+                boxes: "0",
+                qty: "0",
+                inlaySqFt: "0"
             };
             addItem(itemData);
         }
@@ -515,29 +509,29 @@
             
             let itemHtml = `
                 <div class="flex-shrink-0 w-full md:w-36">
-                    <label for="" class="block text-xs font-medium text-gray-500">Item Type</label>
+                    <label class="block text-xs font-medium text-gray-500">Item Type</label>
                     <select class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md item-type-select">
                         <option value="generic">Generic Item</option>
                         <option value="wooden-tile">Wooden Tile</option>
                     </select>
                 </div>
                 <div class="w-full">
-                    <label for="" class="block text-xs font-medium text-gray-500">Description</label>
+                    <label class="block text-xs font-medium text-gray-500">Description</label>
                     <textarea class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md description-input"></textarea>
                 </div>`;
 
             if (currentDocType === 'invoice') {
                 itemHtml += `
                 <div class="flex-shrink-0 w-full md:w-20">
-                    <label for="" class="block text-xs font-medium text-gray-500">Rate</label>
+                    <label class="block text-xs font-medium text-gray-500">Rate</label>
                     <input type="number" step="0.01" value="0" class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md rate-input">
                 </div>
                 <div class="item-qty-container flex-shrink-0 w-full md:w-20">
-                    <label for="" class="block text-xs font-medium text-gray-500">Qty</label>
+                    <label class="block text-xs font-medium text-gray-500">Qty</label>
                     <input type="number" step="0.01" value="0" class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md qty-input">
                 </div>
                 <div class="flex-shrink-0 w-full md:w-24">
-                    <label for="" class="block text-xs font-medium text-gray-500">Unit</label>
+                    <label class="block text-xs font-medium text-gray-500">Unit</label>
                     <select class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md unit-select">
                         <option value="sq.ft">sq.ft</option>
                         <option value="per box">per box</option>
@@ -549,17 +543,17 @@
                     </select>
                 </div>
                 <div class="flex-shrink-0 w-full md:w-24">
-                    <label for="" class="block text-xs font-medium text-gray-500">Subtotal</label>
+                    <label class="block text-xs font-medium text-gray-500">Subtotal</label>
                     <input type="text" value="0.00" readonly class="mt-1 block w-full px-2 py-1 text-sm bg-gray-200 border border-gray-300 rounded-md subtotal-output">
                 </div>`;
             } else { // challan
                 itemHtml += `
                 <div class="item-qty-container flex-shrink-0 w-full md:w-20">
-                    <label for="" class="block text-xs font-medium text-gray-500">Qty</label>
+                    <label class="block text-xs font-medium text-gray-500">Qty</label>
                     <input type="number" step="0.01" value="0" class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md qty-input">
                 </div>
                 <div class="flex-shrink-0 w-full md:w-24">
-                    <label for="" class="block text-xs font-medium text-gray-500">Unit</label>
+                    <label class="block text-xs font-medium text-gray-500">Unit</label>
                     <select class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md unit-select">
                         <option value="sq.ft">sq.ft</option>
                         <option value="per box">per box</option>
@@ -574,23 +568,21 @@
 
             itemHtml += `
                 <button type="button" class="absolute top-2 right-2 text-gray-400 hover:text-red-500 remove-item-btn" title="Remove Item">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    <svg xmlns="http://www.w3.org/24000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>
             `;
             itemRow.innerHTML = itemHtml;
             itemList.appendChild(itemRow);
 
-            // Get references to the new elements
             const itemTypeSelect = itemRow.querySelector('.item-type-select');
             const descriptionInput = itemRow.querySelector('.description-input');
             const qtyContainer = itemRow.querySelector('.item-qty-container');
             const unitSelect = itemRow.querySelector('.unit-select');
             const removeItemBtn = itemRow.querySelector('.remove-item-btn');
             
-            // Pre-fill with data if provided
             if (data.type) {
                 itemTypeSelect.value = data.type;
-                handleItemTypeChange(itemRow); // Call handler to set up the correct inputs
+                handleItemTypeChange(itemRow);
                 if (data.boxes) {
                     itemRow.querySelector('.boxes-input').value = data.boxes;
                 }
@@ -601,7 +593,6 @@
                      itemRow.querySelector('.inlay-sqft-input').value = data.inlaySqFt;
                 }
             } else {
-                // Default behavior for generic item
                 itemRow.querySelector('.description-input').value = data.description || '';
                 itemRow.querySelector('.qty-input').value = data.qty || '';
                 itemRow.querySelector('.unit-select').value = data.unit || 'sq.ft';
@@ -611,10 +602,8 @@
                 itemRow.querySelector('.rate-input').value = data.rate;
             }
 
-            // Event listener for item type change
             itemTypeSelect.addEventListener('change', () => handleItemTypeChange(itemRow));
 
-            // Add event listeners to the new inputs for real-time calculation
             if (currentDocType === 'invoice') {
                 const rateInput = itemRow.querySelector('.rate-input');
                 const subtotalOutput = itemRow.querySelector('.subtotal-output');
@@ -627,9 +616,7 @@
                     updateTotal();
                 };
                 rateInput.addEventListener('input', calculateSubtotal);
-                qtyContainer.addEventListener('input', calculateSubtotal); // Listen for input on the container to catch changes in its children
-            } else {
-                qtyContainer.addEventListener('input', () => {}); // A placeholder listener to prevent errors
+                qtyContainer.addEventListener('input', calculateSubtotal);
             }
 
             removeItemBtn.addEventListener('click', () => {
@@ -648,16 +635,14 @@
             const itemTypeSelect = itemRow.querySelector('.item-type-select');
             const descriptionInput = itemRow.querySelector('.description-input');
             const qtyContainer = itemRow.querySelector('.item-qty-container');
-            const qtyInput = itemRow.querySelector('.qty-input');
             const unitSelect = itemRow.querySelector('.unit-select');
 
             if (itemTypeSelect.value === 'wooden-tile') {
-                // Change description and lock it
                 descriptionInput.value = "Laminate AGT fuji (RK905)\nCODE:Rk905\nSIZE: 8X191X1200M\nWITH REQ. UNDERLAY";
                 descriptionInput.setAttribute('readonly', true);
                 descriptionInput.classList.add('bg-gray-200');
 
-                // Change Qty input to Boxes input
+                // Replace Qty input with Boxes input and add Qty (sq.ft) input
                 qtyContainer.innerHTML = `
                     <label class="block text-xs font-medium text-gray-500">Boxes</label>
                     <input type="number" step="1" value="0" class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md boxes-input">
@@ -669,7 +654,6 @@
                     </div>
                 `);
 
-                // Add the new Inlay sq.ft field after the Qty field
                 const qtyOutputDiv = itemRow.querySelector('.wooden-tile-sqft-output');
                 if (qtyOutputDiv) {
                     qtyOutputDiv.insertAdjacentHTML('afterend', `
@@ -680,68 +664,52 @@
                     `);
                 }
 
-                // Set unit to sq.ft and lock it
                 unitSelect.value = 'sq.ft';
                 unitSelect.setAttribute('disabled', true);
                 unitSelect.classList.add('bg-gray-200');
 
-                // Add listener to the new boxes input
                 itemRow.querySelector('.boxes-input').addEventListener('input', (e) => {
                     const boxes = parseFloat(e.target.value) || 0;
                     const sqft = boxes * 19.74;
                     itemRow.querySelector('.qty-input').value = sqft.toFixed(2);
                     if (currentDocType === 'invoice') {
-                        // Trigger a subtotal calculation if in invoice mode
                         const event = new Event('input', { bubbles: true });
                         itemRow.querySelector('.qty-input').dispatchEvent(event);
                     }
                 });
 
             } else {
-                // Revert to generic item
                 descriptionInput.value = "";
                 descriptionInput.removeAttribute('readonly');
                 descriptionInput.classList.remove('bg-gray-200');
-
-                // Revert Qty container
+                
                 const sqftOutput = itemRow.querySelector('.wooden-tile-sqft-output');
-                if (sqftOutput) {
-                    sqftOutput.remove();
-                }
-                // Remove Inlay sq.ft field if it exists
+                if (sqftOutput) sqftOutput.remove();
+                
                 const inlaySqftInput = itemRow.querySelector('.inlay-sqft-input');
-                if (inlaySqftInput) {
-                    inlaySqftInput.parentElement.remove();
-                }
+                if (inlaySqftInput) inlaySqftInput.parentElement.remove();
                 
                 qtyContainer.innerHTML = `
-                    <label for="" class="block text-xs font-medium text-gray-500">Qty</label>
+                    <label class="block text-xs font-medium text-gray-500">Qty</label>
                     <input type="number" step="0.01" value="0" class="mt-1 block w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded-md qty-input">
                 `;
 
-                // Revert unit select
                 unitSelect.removeAttribute('disabled');
                 unitSelect.classList.remove('bg-gray-200');
                 
-                // Re-add listener for generic items
-                const qtyInput = itemRow.querySelector('.qty-input');
-                 if (currentDocType === 'invoice') {
-                    qtyInput.addEventListener('input', () => updateTotal());
-                 }
-                 // Reset values
-                 qtyInput.value = "0";
-                 if (currentDocType === 'invoice') {
+                if (currentDocType === 'invoice') {
+                    itemRow.querySelector('.qty-input').addEventListener('input', () => updateTotal());
+                }
+                itemRow.querySelector('.qty-input').value = "0";
+                if (currentDocType === 'invoice') {
                     itemRow.querySelector('.subtotal-output').value = "0.00";
                     updateTotal();
-                 }
+                }
             }
         }
 
-
-        // Add item button click listener
         addItemBtn.addEventListener('click', () => addItem());
 
-        // Function to update the total amount (only for invoices)
         function updateTotal() {
             if (currentDocType !== 'invoice') return;
             let total = 0;
@@ -751,7 +719,6 @@
             totalAmountSpan.textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
-        // Main function to generate the PDF
         generatePdfBtn.addEventListener('click', async () => {
             if (currentDocType === 'invoice') {
                 await generateInvoicePDF();
@@ -761,18 +728,17 @@
         });
         
         async function generateInvoicePDF() {
-            // Get data from the form
+            loadingOverlay.style.display = 'flex';
             const docNo = docNoInput.value;
             const docDate = docDateInput.value;
             const billTo = billToInput.value;
 
-            // Simple validation
             if (!docNo || !docDate || !billTo) {
+                loadingOverlay.style.display = 'none';
                 showCustomAlert('Please fill in all required fields: Document No., Date, and Bill To.');
                 return;
             }
 
-            // Get all item data
             const items = [];
             document.querySelectorAll('#item-list > div').forEach(row => {
                 const itemType = row.querySelector('.item-type-select').value;
@@ -784,12 +750,10 @@
                 items.push({ itemType, description, rate, qty, unit, subtotal });
             });
 
-            // Populate the hidden PDF template with the form data
             const template = document.getElementById('invoice-pdf-template');
             document.getElementById('pdf-invoice-no').textContent = docNo;
             document.getElementById('pdf-invoice-date').textContent = docDate;
             document.getElementById('pdf-invoice-bill-to').textContent = billTo;
-
             const pdfItemList = document.getElementById('pdf-invoice-item-list');
             pdfItemList.innerHTML = '';
             
@@ -811,18 +775,11 @@
             document.getElementById('pdf-subtotal').textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             document.getElementById('pdf-total').textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-            // Show a temporary message to the user
-            const originalBtnText = generatePdfBtn.textContent;
-            generatePdfBtn.textContent = 'Generating PDF...';
-            generatePdfBtn.disabled = true;
-
-            // Use html2canvas to convert the template to an image
             const canvas = await html2canvas(template, {
-                scale: 2, // Higher scale for better resolution
-                useCORS: true // Required if you use external images
+                scale: 2,
+                useCORS: true
             });
 
-            // Create a new jsPDF instance
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgData = canvas.toDataURL('image/png');
@@ -830,19 +787,13 @@
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-            // Add the image to the PDF
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-
-            // Save the PDF with a dynamic filename
             pdf.save(`invoice_${docNo}.pdf`);
-
-            // Restore the button state
-            generatePdfBtn.textContent = originalBtnText;
-            generatePdfBtn.disabled = false;
+            loadingOverlay.style.display = 'none';
         }
 
         async function generateChallanPDF() {
-            // Get data from the form
+            loadingOverlay.style.display = 'flex';
             const docNo = docNoInput.value;
             const billTo = billToInput.value;
             const orderDate = orderDateInput.value;
@@ -851,13 +802,12 @@
             const contactName = contactNameInput.value;
             const contactNumber = contactNumberInput.value;
 
-            // Simple validation
             if (!docNo || !billTo || !orderDate || !dispatchDate) {
+                loadingOverlay.style.display = 'none';
                 showCustomAlert('Please fill in all required fields: Document No., Dates, and Bill To.');
                 return;
             }
 
-            // Get all item data
             const items = [];
             document.querySelectorAll('#item-list > div').forEach(row => {
                 const itemType = row.querySelector('.item-type-select').value;
@@ -873,10 +823,8 @@
                 items.push({ itemType, description, qty, unit, boxes, inlaySqFt });
             });
 
-            // Save challan to local storage
             saveChallan({ docNo, orderDate, dispatchDate, billTo, customerAddress, contactName, contactNumber, items });
 
-            // Populate the hidden PDF template with the form data
             const template = document.getElementById('challan-pdf-template');
             document.getElementById('pdf-challan-no').textContent = docNo;
             document.getElementById('pdf-challan-bill-to').textContent = billTo;
@@ -911,18 +859,11 @@
                 pdfItemList.appendChild(newRow);
             });
 
-            // Show a temporary message to the user
-            const originalBtnText = generatePdfBtn.textContent;
-            generatePdfBtn.textContent = 'Generating PDF...';
-            generatePdfBtn.disabled = true;
-
-            // Use html2canvas to convert the template to an image
             const canvas = await html2canvas(template, {
                 scale: 2,
                 useCORS: true
             });
 
-            // Create a new jsPDF instance
             const { jsPDF } = window.jspdf;
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgData = canvas.toDataURL('image/png');
@@ -930,15 +871,9 @@
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-            // Add the image to the PDF
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-
-            // Save the PDF with a dynamic filename
             pdf.save(`challan_${docNo}.pdf`);
-
-            // Restore the button state
-            generatePdfBtn.textContent = originalBtnText;
-            generatePdfBtn.disabled = false;
+            loadingOverlay.style.display = 'none';
         }
 
         // Save challan to local storage
@@ -955,7 +890,10 @@
         // Load and display challan summary
         function loadChallanSummary() {
             summaryList.innerHTML = '';
-            generateSummaryPdfBtn.classList.add('hidden');
+            grandTotalsSection.classList.add('hidden');
+            generateSelectedPdfBtn.classList.add('hidden');
+            generateSelectedPdfBtn.disabled = true;
+            
             try {
                 const challans = JSON.parse(localStorage.getItem('challans')) || [];
                 if (challans.length === 0) {
@@ -963,91 +901,202 @@
                     return;
                 }
                 noChallansMsg.classList.add('hidden');
-                generateSummaryPdfBtn.classList.remove('hidden');
+                grandTotalsSection.classList.remove('hidden');
+                generateSelectedPdfBtn.classList.remove('hidden');
 
-                challans.forEach((challan, index) => {
-                    const challanItem = document.createElement('div');
-                    challanItem.className = 'flex items-center gap-4 p-4 border rounded-lg shadow-sm bg-white';
+                let totalBoxes = 0;
+                let totalInlay = 0;
+                let totalSqFt = 0;
+
+                challans.forEach((challan, challanIndex) => {
+                    const challanItemContainer = document.createElement('div');
+                    challanItemContainer.className = 'p-4 bg-white rounded-lg shadow-md';
                     
-                    // Challan summary doesn't have a total amount, so we'll show a message instead
-                    const totalPlaceholder = challan.items.length > 0 ? "Items listed" : "No items listed";
-
-                    challanItem.innerHTML = `
-                        <input type="checkbox" class="h-5 w-5 text-blue-600 rounded challan-checkbox" data-index="${index}">
-                        <div class="flex-grow">
-                            <h4 class="font-semibold text-gray-800">Challan No. ${challan.docNo}</h4>
-                            <p class="text-sm text-gray-500">Date: ${challan.dispatchDate}</p>
-                            <p class="text-sm text-gray-500">Bill To: ${challan.billTo}</p>
-                            <p class="text-sm text-gray-500">Status: ${totalPlaceholder}</p>
+                    challanItemContainer.innerHTML = `
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" class="challan-checkbox" data-challan-index="${challanIndex}">
+                                <h4 class="font-bold text-lg text-gray-800">Challan No. ${challan.docNo}</h4>
+                            </div>
+                            <span class="text-sm text-gray-500">Order Date: ${challan.orderDate}</span>
                         </div>
+                        <p class="text-sm text-gray-600 mb-4">
+                            <span class="font-semibold">Address:</span> ${challan.customerAddress}
+                        </p>
+                        <ul class="space-y-2 text-sm text-gray-700"></ul>
                     `;
-                    summaryList.appendChild(challanItem);
+                    const itemList = challanItemContainer.querySelector('ul');
+                    
+                    challan.items.forEach(item => {
+                        let itemHtml = `<li class="flex flex-col p-2 bg-gray-50 rounded-lg">
+                            <span class="font-semibold text-gray-800">${item.description}</span>`;
+                        
+                        if (item.itemType === 'wooden-tile') {
+                            const boxes = parseFloat(item.boxes) || 0;
+                            const inlay = parseFloat(item.inlaySqFt) || 0;
+                            const qty = parseFloat(item.qty) || 0;
+
+                            itemHtml += `
+                                <div class="mt-1 grid grid-cols-3 text-xs gap-2">
+                                    <span class="text-gray-500">Boxes: <span class="text-gray-800 font-medium">${boxes}</span></span>
+                                    <span class="text-gray-500">Inlay (sq.ft): <span class="text-gray-800 font-medium">${inlay.toFixed(2)}</span></span>
+                                    <span class="text-gray-500">Qty (sq.ft): <span class="text-gray-800 font-medium">${qty.toFixed(2)}</span></span>
+                                </div>
+                            `;
+                            totalBoxes += boxes;
+                            totalInlay += inlay;
+                            totalSqFt += qty;
+                        } else {
+                            itemHtml += `<span class="mt-1 text-gray-500">Qty: ${item.qty} ${item.unit}</span>`;
+                        }
+                        itemHtml += `</li>`;
+                        itemList.innerHTML += itemHtml;
+                    });
+                    
+                    summaryList.appendChild(challanItemContainer);
                 });
+                
+                totalBoxesOutput.textContent = totalBoxes;
+                totalInlayOutput.textContent = totalInlay.toFixed(2);
+                totalSqFtOutput.textContent = totalSqFt.toFixed(2);
+
+                document.querySelectorAll('.challan-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', updateSelectedPdfButtonState);
+                });
+
             } catch (e) {
                 console.error("Could not load from local storage", e);
                 noChallansMsg.classList.remove('hidden');
             }
         }
+        
+        function updateSelectedPdfButtonState() {
+            const checkedCount = document.querySelectorAll('.challan-checkbox:checked').length;
+            generateSelectedPdfBtn.disabled = checkedCount === 0;
+        }
 
-        // Generate summary PDF
-        generateSummaryPdfBtn.addEventListener('click', async () => {
-            const selectedIndices = Array.from(document.querySelectorAll('.challan-checkbox:checked')).map(cb => cb.dataset.index);
-            if (selectedIndices.length === 0) {
-                showCustomAlert('Please select at least one challan to generate a summary.');
+        // Generate summary PDF using autoTable for multi-page support
+        generateSelectedPdfBtn.addEventListener('click', () => {
+            const checkedIndices = Array.from(document.querySelectorAll('.challan-checkbox:checked')).map(cb => parseInt(cb.dataset.challanIndex));
+            
+            if (checkedIndices.length === 0) {
+                showCustomAlert("Please select at least one challan to generate the PDF.");
                 return;
             }
 
-            const challans = JSON.parse(localStorage.getItem('challans')) || [];
-            const selectedChallans = selectedIndices.map(index => challans[index]);
-
-            // Populate summary PDF template
-            const template = document.getElementById('summary-pdf-template');
-            const pdfSummaryList = document.getElementById('pdf-summary-list');
-            pdfSummaryList.innerHTML = '';
+            loadingOverlay.style.display = 'flex';
             
-            let grandTotal = 0;
-            selectedChallans.forEach((challan, index) => {
-                // Challan has no total amount, so use a placeholder
-                const total = "N/A";
+            try {
+                const allChallans = JSON.parse(localStorage.getItem('challans')) || [];
+                const selectedChallans = checkedIndices.map(index => allChallans[index]);
+
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+
+                // Add Header with company details
+                const companyLogo = "1.png";
+                const companyDetails = [
+                    "AZAN ENTERPRISES",
+                    "Architect, Planner, Renovation Int./Ext. Designer & Estimator",
+                    "CIVIL CONTRUCTION AND CONTACTOR",
+                    "OFFICE#B218, SECTOR 11-A, NORTH KARACHI, KARACHI",
+                    "NTN#7960968 / CNIC#42101-1869261-5",
+                    "Phone: 0334-7332948 / 0344-2656589",
+                    "Email: azanamir27@outlook.com"
+                ];
+
+                pdf.addImage(companyLogo, 'PNG', 10, 10, 30, 12);
+                pdf.setFontSize(16);
+                pdf.text("DELIVERY CHALLAN SUMMARY", 105, 18, null, null, 'center');
+                pdf.setFontSize(8);
+                pdf.text(companyDetails.join("\n"), 10, 25);
+                pdf.text(`Date: ${new Date().toLocaleDateString()}`, 190, 20, null, null, 'right');
+
+                let totalBoxes = 0;
+                let totalInlay = 0;
+                let totalSqFt = 0;
+
+                const tableData = [];
+                let itemCounter = 1;
+
+                selectedChallans.forEach(challan => {
+                    challan.items.forEach(item => {
+                        let displayInlay = '';
+                        let displayBoxes = '';
+                        let displaySqft = '';
+                        
+                        if (item.itemType === 'wooden-tile') {
+                            const inlay = parseFloat(item.inlaySqFt) || 0;
+                            const boxes = parseFloat(item.boxes) || 0;
+                            const qty = parseFloat(item.qty) || 0;
+                            
+                            displayInlay = inlay.toFixed(2);
+                            displayBoxes = String(boxes);
+                            displaySqft = qty.toFixed(2);
+                            
+                            totalBoxes += boxes;
+                            totalInlay += inlay;
+                            totalSqFt += qty;
+                        }
+
+                        tableData.push([
+                            String(itemCounter++),
+                            challan.docNo,
+                            challan.orderDate,
+                            challan.customerAddress,
+                            item.description,
+                            displayInlay,
+                            displayBoxes,
+                            displaySqft
+                        ]);
+                    });
+                });
+
+                pdf.autoTable({
+                    startY: 55,
+                    head: [
+                        ['S.NO.', 'CHALAN NO.', 'ORDER DATE', 'ADDRESS', 'DESCRIPTION', 'INLAY', 'BOXES', 'SQ.FT']
+                    ],
+                    body: tableData,
+                    theme: 'grid', // This theme ensures all border lines are visible
+                    headStyles: { fillColor: [243, 244, 246], textColor: [0, 0, 0] },
+                    styles: {
+                        fontSize: 8,
+                        cellPadding: 1,
+                        valign: 'top'
+                    },
+                    columnStyles: {
+                        0: { halign: 'center', cellWidth: 10 },
+                        1: { halign: 'left', cellWidth: 15 },
+                        2: { halign: 'center', cellWidth: 20 },
+                        3: { halign: 'left', cellWidth: 35 },
+                        4: { halign: 'left', cellWidth: 60 },
+                        5: { halign: 'right', cellWidth: 15 },
+                        6: { halign: 'right', cellWidth: 15 },
+                        7: { halign: 'right', cellWidth: 15 }
+                    }
+                });
+
+                // Add Totals and Signatures to the last page
+                let finalY = pdf.autoTable.previous.finalY + 10;
+                pdf.setFontSize(10);
+                pdf.text(`TOTAL INLAY: ${totalInlay.toFixed(2)}`, 190, finalY, null, null, 'right');
+                finalY += 5;
+                pdf.text(`TOTAL BOXES: ${Math.round(totalBoxes)}`, 190, finalY, null, null, 'right');
+                finalY += 5;
+                pdf.text(`TOTAL SQ.FT: ${totalSqFt.toFixed(2)}`, 190, finalY, null, null, 'right');
+
                 
-                const newRow = document.createElement('tr');
-                newRow.innerHTML = `
-                    <td class="border border-gray-400 p-2 text-center align-top">${index + 1}.</td>
-                    <td class="border border-gray-400 p-2 align-top">${challan.docNo}</td>
-                    <td class="border border-gray-400 p-2 align-top">${challan.billTo}</td>
-                    <td class="border border-gray-400 p-2 text-right align-top">${challan.dispatchDate}</td>
-                    <td class="border border-gray-400 p-2 text-right align-top">${total}</td>
-                `;
-                pdfSummaryList.appendChild(newRow);
-            });
 
-            document.getElementById('pdf-summary-date').textContent = new Date().toISOString().slice(0, 10);
-            document.getElementById('pdf-grand-total').textContent = "N/A";
-
-            // Show a temporary message to the user
-            const originalBtnText = generateSummaryPdfBtn.textContent;
-            generateSummaryPdfBtn.textContent = 'Generating PDF...';
-            generateSummaryPdfBtn.disabled = true;
-
-            const canvas = await html2canvas(template, {
-                scale: 2,
-                useCORS: true
-            });
-
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgData = canvas.toDataURL('image/png');
-            const imgProps= pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`challan_summary_${new Date().toISOString().slice(0, 10)}.pdf`);
-
-            // Restore the button state
-            generateSummaryPdfBtn.textContent = originalBtnText;
-            generateSummaryPdfBtn.disabled = false;
+                pdf.save(`selected_challan_summary_${new Date().toISOString().slice(0, 10)}.pdf`);
+            } catch(e) {
+                console.error("PDF generation error:", e);
+                showCustomAlert("An error occurred while generating the PDF. Please check the console for details.");
+            } finally {
+                loadingOverlay.style.display = 'none';
+            }
         });
     </script>
 </body>
 </html>
+
